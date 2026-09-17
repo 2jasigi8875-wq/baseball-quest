@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>야구 퀘스트</title>
+<style>
+  body{margin:0;padding:20px;background:#0d1117;color:#e6edf3;
+       font-family:-apple-system,"Noto Sans KR",sans-serif;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .sub{color:#8b949e;font-size:13px;}
+  .card{background:#161b22;border:1px solid #30363d;
+        border-radius:14px;padding:18px;margin-top:16px;}
+  .fire{text-align:center;}
+  .fire .num{font-size:52px;font-weight:800;color:#f0883e;line-height:1;}
+  .fire .lbl{font-size:13px;color:#8b949e;margin-top:4px;}
+  .move{display:flex;gap:10px;padding:10px 0;
+        border-bottom:1px solid #21262d;font-size:14px;}
+  .move:last-child{border-bottom:0;}
+  .move b{color:#58a6ff;flex:0 0 58px;}
+  .btn{width:100%;margin-top:14px;padding:16px;font-size:16px;
+       font-weight:800;font-family:inherit;border:0;border-radius:12px;
+       background:#f0883e;color:#000;}
+  .btn:disabled{background:#238636;color:#fff;}
+</style>
+</head>
+<body>
+
+<h1>⚾ 야구 퀘스트</h1>
+<div class="sub" id="today"></div>
+
+<div class="card fire">
+  <div class="num" id="streak">0</div>
+  <div class="lbl">🔥 연속 성공 일수 (최고 <span id="best">0</span>일)</div>
+</div>
+
+<div class="card">
+  <b>🌅 아침 미션 · 5분 스트레칭</b>
+  <div class="sub" style="margin:6px 0 10px">
+    학교 가기 전에. 아프지 않은 범위까지만 천천히.
+  </div>
+  <div class="move"><b>40초</b><span>목·어깨 돌리기 (앞뒤 10회씩)</span></div>
+  <div class="move"><b>60초</b><span>팔 크게 돌리기 + 가슴 열기</span></div>
+  <div class="move"><b>60초</b><span>무릎 껴안고 걷기 좌우 8회</span></div>
+  <div class="move"><b>60초</b><span>런지 자세로 몸통 비틀기 좌우 6회</span></div>
+  <div class="move"><b>60초</b><span>발목 돌리기 + 제자리 스킵 20회</span></div>
+  <div class="move"><b>20초</b><span>심호흡 5번 (4초 들이쉬고 6초 내쉬기)</span></div>
+  <button class="btn" id="doneBtn">오늘 완료! ✅</button>
+</div>
+
+<script>
+  const KEY='baseball_quest';
+  const today=()=>new Date().toISOString().slice(0,10);
+  const yest=()=>new Date(Date.now()-86400000).toISOString().slice(0,10);
+
+  let data=JSON.parse(localStorage.getItem(KEY))||{lastDone:'',streak:0,best:0};
+  const save=()=>localStorage.setItem(KEY,JSON.stringify(data));
+
+  function draw(){
+    const d=new Date();
+    const yo=['일','월','화','수','목','금','토'][d.getDay()];
+    document.getElementById('today').textContent=
+      (d.getMonth()+1)+'월 '+d.getDate()+'일 ('+yo+')';
+
+    if(data.lastDone!==today() && data.lastDone!==yest()) data.streak=0;
+
+    document.getElementById('streak').textContent=data.streak;
+    document.getElementById('best').textContent=data.best;
+
+    const b=document.getElementById('doneBtn');
+    if(data.lastDone===today()){b.disabled=true;b.textContent='오늘 완료했어요 👍';}
+  }
+
+  document.getElementById('doneBtn').onclick=function(){
+    if(data.lastDone===today()) return;
+    data.streak=(data.lastDone===yest())?data.streak+1:1;
+    if(data.streak>data.best) data.best=data.streak;
+    data.lastDone=today();
+    save(); draw();
+    alert('🔥 '+data.streak+'일 연속 성공!');
+  };
+
+  draw();
+</script>
+</body>
+</html>
