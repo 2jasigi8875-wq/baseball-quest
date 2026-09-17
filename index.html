@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>야구 퀘스트</title>
 <style>
-  body{margin:0;padding:20px;background:#0d1117;color:#e6edf3;
+  body{margin:0;padding:20px 16px 40px;background:#0d1117;color:#e6edf3;
        font-family:-apple-system,"Noto Sans KR",sans-serif;}
   h1{font-size:20px;margin:0 0 4px;}
   .sub{color:#8b949e;font-size:13px;}
@@ -15,13 +15,19 @@
   .fire .num{font-size:52px;font-weight:800;color:#f0883e;line-height:1;}
   .fire .lbl{font-size:13px;color:#8b949e;margin-top:4px;}
   .move{display:flex;gap:10px;padding:10px 0;
-        border-bottom:1px solid #21262d;font-size:14px;}
+        border-bottom:1px solid #21262d;font-size:14px;line-height:1.5;}
   .move:last-child{border-bottom:0;}
   .move b{color:#58a6ff;flex:0 0 58px;}
   .btn{width:100%;margin-top:14px;padding:16px;font-size:16px;
        font-weight:800;font-family:inherit;border:0;border-radius:12px;
        background:#f0883e;color:#000;}
   .btn:disabled{background:#238636;color:#fff;}
+  .btn.gray{background:#21262d;color:#e6edf3;border:1px solid #30363d;
+            font-size:14px;padding:13px;}
+  .btn.gray.on{background:#1f6feb;color:#fff;border-color:#1f6feb;}
+  .tag{display:inline-block;font-size:11px;padding:3px 8px;border-radius:6px;
+       background:#21262d;color:#f0883e;margin-left:6px;vertical-align:2px;}
+  .rest{text-align:center;padding:10px 0;font-size:15px;line-height:1.7;}
 </style>
 </head>
 <body>
@@ -29,11 +35,13 @@
 <h1>⚾ 야구 퀘스트</h1>
 <div class="sub" id="today"></div>
 
+<!-- 연속일 -->
 <div class="card fire">
   <div class="num" id="streak">0</div>
   <div class="lbl">🔥 연속 성공 일수 (최고 <span id="best">0</span>일)</div>
 </div>
 
+<!-- 아침 스트레칭 -->
 <div class="card">
   <b>🌅 아침 미션 · 5분 스트레칭</b>
   <div class="sub" style="margin:6px 0 10px">
@@ -48,39 +56,162 @@
   <button class="btn" id="doneBtn">오늘 완료! ✅</button>
 </div>
 
+<!-- 레슨 여부 -->
+<div class="card" id="lessonCard">
+  <b>📅 오늘 레슨 있어?</b>
+  <div class="sub" style="margin:6px 0 4px">
+    누르면 저녁 미션이 알아서 바뀝니다.
+  </div>
+  <button class="btn gray" id="lessonBtn">레슨 있는 날 🏟️</button>
+</div>
+
+<!-- 저녁 미션 (내용이 자동으로 바뀜) -->
+<div class="card" id="nightCard"></div>
+
 <script>
-  const KEY='baseball_quest';
-  const today=()=>new Date().toISOString().slice(0,10);
-  const yest=()=>new Date(Date.now()-86400000).toISOString().slice(0,10);
+/* ========== 1. 기본 도구 ========== */
+const KEY='baseball_quest';
+const today=()=>new Date().toISOString().slice(0,10);
+const yest =()=>new Date(Date.now()-86400000).toISOString().slice(0,10);
 
-  let data=JSON.parse(localStorage.getItem(KEY))||{lastDone:'',streak:0,best:0};
-  const save=()=>localStorage.setItem(KEY,JSON.stringify(data));
+// 이번 주 월요일 날짜를 구합니다 (주간 초기화 기준)
+function monday(){
+  const d=new Date();
+  const t=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  t.setDate(t.getDate()-((t.getDay()+6)%7));
+  return t.toISOString().slice(0,10);
+}
 
-  function draw(){
-    const d=new Date();
-    const yo=['일','월','화','수','목','금','토'][d.getDay()];
-    document.getElementById('today').textContent=
-      (d.getMonth()+1)+'월 '+d.getDate()+'일 ('+yo+')';
+/* ========== 2. 저장된 기록 ========== */
+let data=JSON.parse(localStorage.getItem(KEY))||{
+  lastDone:'', streak:0, best:0,
+  lessons:{},              // 날짜별 레슨 여부
+  week:'',                 // 현재 주 (월요일 날짜)
+  batDone:false,           // 이번 주 타격 드릴 완료?
+  pitDone:false,           // 이번 주 투수 드릴 완료?
+  nightDate:''             // 저녁 미션을 완료한 날짜
+};
+const save=()=>localStorage.setItem(KEY,JSON.stringify(data));
 
-    if(data.lastDone!==today() && data.lastDone!==yest()) data.streak=0;
+/* ========== 3. 드릴 내용 ========== */
+const BAT={
+  title:'🏏 타격 드릴 · 15분',
+  note:'개수를 채우는 게 아니라 한 개를 제대로. 타구 소리가 일정한지 들어보기.',
+  list:[
+    ['5분','티배팅 파워 30개 — 뒷발로 땅을 밀고 골반부터 회전'],
+    ['5분','존 3분할 — 몸쪽·가운데·바깥쪽 각 10개 (바깥쪽은 밀어치기)'],
+    ['3분','한손 스윙 좌우 10회씩 + 리스트롤 20회'],
+    ['2분','거울 앞 빈스윙 10개 — 멈춰서 자세 확인']
+  ]
+};
+const PIT={
+  title:'⚾ 투수 드릴 · 15분',
+  note:'집에서는 세게 던지지 않습니다. 폼과 어깨 관리만. 팔이 아프면 바로 중단.',
+  list:[
+    ['4분','타월 드릴 20회 — 팔 대신 수건으로, 앞발 착지 후 상체가 나가는 순서 익히기'],
+    ['4분','밸런스 체크 — 한 발 들고 5초 멈추기 × 10회 (흔들리지 않게)'],
+    ['5분','밴드 암케어 — 외회전·내회전·L자·리버스플라이 각 15회, 가볍고 천천히'],
+    ['2분','손가락·손목 풀기 + 어깨 쿨다운 스트레칭']
+  ]
+};
+const COOL={
+  title:'🌙 레슨 다녀온 날 · 2분 쿨다운',
+  note:'오늘은 이미 충분히 했습니다. 이것만 하고 바로 자는 게 실력입니다.',
+  list:[
+    ['40초','어깨 뒤쪽 스트레칭 좌우 20초씩'],
+    ['40초','가슴·겨드랑이 열기 (벽에 손 대고 몸 돌리기)'],
+    ['40초','심호흡 5번 + 오늘 잘한 것 하나 떠올리기']
+  ]
+};
 
-    document.getElementById('streak').textContent=data.streak;
-    document.getElementById('best').textContent=data.best;
+/* ========== 4. 화면 그리기 ========== */
+function draw(){
+  const d=new Date();
+  const yo=['일','월','화','수','목','금','토'][d.getDay()];
+  document.getElementById('today').textContent=
+    (d.getMonth()+1)+'월 '+d.getDate()+'일 ('+yo+')';
 
-    const b=document.getElementById('doneBtn');
-    if(data.lastDone===today()){b.disabled=true;b.textContent='오늘 완료했어요 👍';}
+  // 주가 바뀌었으면 드릴 기록 초기화
+  if(data.week!==monday()){
+    data.week=monday(); data.batDone=false; data.pitDone=false; save();
   }
 
-  document.getElementById('doneBtn').onclick=function(){
-    if(data.lastDone===today()) return;
-    data.streak=(data.lastDone===yest())?data.streak+1:1;
-    if(data.streak>data.best) data.best=data.streak;
-    data.lastDone=today();
-    save(); draw();
-    alert('🔥 '+data.streak+'일 연속 성공!');
-  };
+  // 연속일
+  if(data.lastDone!==today() && data.lastDone!==yest()) data.streak=0;
+  document.getElementById('streak').textContent=data.streak;
+  document.getElementById('best').textContent=data.best;
 
-  draw();
+  const b=document.getElementById('doneBtn');
+  if(data.lastDone===today()){b.disabled=true;b.textContent='오늘 완료했어요 👍';}
+
+  // 레슨 버튼 상태
+  const isLesson=!!data.lessons[today()];
+  const lb=document.getElementById('lessonBtn');
+  lb.className='btn gray'+(isLesson?' on':'');
+  lb.textContent=isLesson?'✅ 오늘은 레슨 날':'레슨 있는 날 🏟️';
+
+  drawNight(isLesson, d.getDay());
+}
+
+function drawNight(isLesson, dow){
+  const box=document.getElementById('nightCard');
+
+  // 주말은 3단계에서 만들 예정
+  if(dow===0||dow===6){
+    box.innerHTML='<b>🗓️ 주말 종합 훈련</b>'+
+      '<div class="rest sub">다음 단계에서 만들 예정입니다.</div>';
+    document.getElementById('lessonCard').style.display='none';
+    return;
+  }
+  document.getElementById('lessonCard').style.display='block';
+
+  // 오늘 할 것 정하기
+  let plan;
+  if(isLesson)            plan=COOL;
+  else if(!data.batDone)  plan=BAT;
+  else if(!data.pitDone)  plan=PIT;
+  else{
+    box.innerHTML='<b>🎉 이번 주 드릴 완료!</b>'+
+      '<div class="rest">타격·투수 둘 다 끝냈어요.<br>'+
+      '오늘은 푹 쉬거나 하고 싶은 놀이를 하세요.</div>';
+    return;
+  }
+
+  const done=(data.nightDate===today());
+  box.innerHTML=
+    '<b>'+plan.title+'</b>'+
+    '<div class="sub" style="margin:6px 0 10px">'+plan.note+'</div>'+
+    plan.list.map(x=>'<div class="move"><b>'+x[0]+'</b><span>'+x[1]+'</span></div>').join('')+
+    '<button class="btn" id="nightBtn"'+(done?' disabled':'')+'>'+
+    (done?'오늘 완료했어요 👍':'완료! ✅')+'</button>';
+
+  if(!done){
+    document.getElementById('nightBtn').onclick=function(){
+      data.nightDate=today();
+      if(plan===BAT) data.batDone=true;
+      if(plan===PIT) data.pitDone=true;
+      save(); draw();
+      alert('잘했어! 👏');
+    };
+  }
+}
+
+/* ========== 5. 버튼 동작 ========== */
+document.getElementById('doneBtn').onclick=function(){
+  if(data.lastDone===today()) return;
+  data.streak=(data.lastDone===yest())?data.streak+1:1;
+  if(data.streak>data.best) data.best=data.streak;
+  data.lastDone=today();
+  save(); draw();
+  alert('🔥 '+data.streak+'일 연속 성공!');
+};
+
+document.getElementById('lessonBtn').onclick=function(){
+  data.lessons[today()]=!data.lessons[today()];
+  save(); draw();
+};
+
+draw();
 </script>
 </body>
 </html>
