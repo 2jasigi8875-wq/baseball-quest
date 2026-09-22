@@ -98,8 +98,8 @@ function autoShield(){
 function isMile(n){return n>0&&n%EVERY===0;}
 function checkRewards(date){
   const c=runTo(date); let got={t:0,s:0,c:c};
-  if(isMile(c)&&D.given.indexOf(date)<0){D.given.push(date);D.tickets++;got.t=1;}
-  if(c%7===0&&D.sgiven.indexOf(date)<0&&D.shields<SMAX){D.sgiven.push(date);D.shields++;got.s=1;}
+  if(c>0&&isMile(c)&&D.given.indexOf(date)<0){D.given.push(date);D.tickets++;got.t=1;}
+  if(c>0&&c%7===0&&D.sgiven.indexOf(date)<0&&D.shields<SMAX){D.sgiven.push(date);D.shields++;got.s=1;}
   return got;
 }
 function pickReward(){
