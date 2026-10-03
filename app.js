@@ -11,7 +11,7 @@ const EVERY=(typeof TICKET_EVERY!=='undefined')?TICKET_EVERY:3;
 const SMAX=(typeof SHIELD_MAX!=='undefined')?SHIELD_MAX:2;
 
 let D=JSON.parse(localStorage.getItem(KEY)||'null');
-if(!D) D=JSON.parse(localStorage.getItem(OLDKEY)||'{}');   /* 예전 기록 이어받기 */
+if(!D) D=JSON.parse(localStorage.getItem(OLDKEY)||'{}');
 if(!D.log)D.log={};
 if(!D.weeks)D.weeks={};
 if(!D.coupons)D.coupons=[];
@@ -19,6 +19,7 @@ if(!D.given)D.given=[];
 if(!D.sgiven)D.sgiven=[];
 if(!D.shld)D.shld={};
 if(!D.rec)D.rec={};
+if(!D.dex)D.dex=[];
 if(D.tickets===undefined)D.tickets=0;
 if(D.shields===undefined)D.shields=0;
 const save=()=>localStorage.setItem(KEY,JSON.stringify(D));
@@ -107,6 +108,14 @@ function pickReward(){
   let r=Math.random()*tot;
   for(let i=0;i<REWARDS.length;i++){r-=REWARDS[i].w;if(r<0)return REWARDS[i].n;}
   return REWARDS[0].n;
+}
+function pickDex(){
+  const lock=DEX.filter(x=>D.dex.indexOf(x.id)<0);
+  if(!lock.length)return null;
+  const t=lock.reduce((a,b)=>a+1/b.r,0);
+  let r=Math.random()*t;
+  for(let i=0;i<lock.length;i++){r-=1/lock[i].r;if(r<0)return lock[i];}
+  return lock[0];
 }
 
 /* ====== 타이머 ====== */
@@ -267,8 +276,14 @@ function spin(){
     if(++i>13){
       clearInterval(t);
       el.textContent='🎉 '+win;
-      D.coupons.push(win);save();fanfare();
-      setTimeout(draw,1700);
+      D.coupons.push(win);
+      let extra='';
+      if(Math.random()<0.3){
+        const nd=pickDex();
+        if(nd){D.dex.push(nd.id);extra='\n\n'+nd.em+' 새 선수 카드 「'+nd.nm+'」 획득!';}
+      }
+      save();fanfare();
+      setTimeout(()=>{if(extra)alert('🎁 '+win+extra);draw();},1300);
     }
   },90);
 }
@@ -379,6 +394,19 @@ function drawRec(){
   });
 }
 
+/* ====== 선수 도감 ====== */
+function drawDex(){
+  const box=$('dexCard');
+  let h='<div class="ttl">🏟️ 선수 도감 <span class="eq">'+D.dex.length+' / '+DEX.length+'</span></div>';
+  h+='<div class="dex">'+DEX.map(d=>{
+    const got=D.dex.indexOf(d.id)>=0;
+    return '<div class="dx'+(got?' got':' lock')+'"><span class="em">'+(got?d.em:'❔')+'</span>'
+      +'<span class="nm">'+(got?d.nm:'???')+'</span></div>';
+  }).join('')+'</div>';
+  h+='<div class="cal-legend">뽑기를 돌리면 가끔 새 카드가 나와요<br>이종범 · 선동열은 아주 귀해요 🐯</div>';
+  box.innerHTML=h;
+}
+
 /* ====== 전체 그리기 ====== */
 function draw(){
   SCREEN=[];
@@ -396,6 +424,7 @@ function draw(){
   drawAsk(d.getDay());
   drawNight(d.getDay());
   drawRec();
+  drawDex();
   document.querySelectorAll('[data-run]').forEach(b=>{
     b.onclick=()=>startPlan(SCREEN[+b.dataset.run]);
   });
