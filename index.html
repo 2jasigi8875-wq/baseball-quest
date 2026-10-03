@@ -108,6 +108,15 @@ summary i{color:#6b8aa5;font-style:normal;font-size:11.5px;flex:0 0 auto}
 .rec .vl u{font-size:11px;text-decoration:none;color:var(--dim);margin-left:2px}
 .rec button{background:#16293a;color:var(--txt);border:1px solid var(--line);border-radius:8px;
  padding:7px 10px;font-size:11px;font-family:inherit;font-weight:700}
+/* ===== 선수 도감 ===== */
+.dex{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.dx{aspect-ratio:1/1;border-radius:12px;background:#0c1a27;border:1px solid #1b2f41;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.dx.got{background:linear-gradient(180deg,#1b3a52,#102535);border-color:#3d7fb5}
+.dx.lock{opacity:.3}
+.dx .em{font-size:24px}
+.dx .nm{font-size:8.5px;color:#9fb6c9;text-align:center;line-height:1.2;padding:0 2px}
+/* ===== 타이머 오버레이 ===== */
 #tm{position:fixed;inset:0;z-index:99;display:none;flex-direction:column;
  background:radial-gradient(700px 400px at 50% 20%,rgba(47,168,90,.2),transparent 70%),#050d16;
  padding:22px 20px;align-items:center;justify-content:center;text-align:center}
@@ -161,6 +170,7 @@ summary i{color:#6b8aa5;font-style:normal;font-size:11.5px;flex:0 0 auto}
 <div class="card" id="askCard"></div>
 <div class="card" id="nightCard"></div>
 <div class="card" id="recCard"></div>
+<div class="card" id="dexCard"></div>
 
 <div id="tm">
   <div class="tstep" id="tStep"></div>
@@ -176,7 +186,7 @@ summary i{color:#6b8aa5;font-style:normal;font-size:11.5px;flex:0 0 auto}
   </div>
 </div>
 
-<script src="data.js?v=5"></script>
-<script src="app.js?v=5"></script>
+<script src="data.js?v=7"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
