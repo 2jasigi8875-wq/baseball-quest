@@ -9,17 +9,18 @@ const YOIL=['일','월','화','수','목','금','토'];
 const $=id=>document.getElementById(id);
 const EVERY=(typeof TICKET_EVERY!=='undefined')?TICKET_EVERY:3;
 const SMAX=(typeof SHIELD_MAX!=='undefined')?SHIELD_MAX:2;
+const BONUS=(typeof DEX_BONUS!=='undefined')?DEX_BONUS:'🎉 자유시간 1시간';
 
 let D=JSON.parse(localStorage.getItem(KEY)||'null');
 if(!D) D=JSON.parse(localStorage.getItem(OLDKEY)||'{}');
 if(!D.log)D.log={};
-if(!D.weeks)D.weeks={};
 if(!D.coupons)D.coupons=[];
 if(!D.given)D.given=[];
 if(!D.sgiven)D.sgiven=[];
 if(!D.shld)D.shld={};
 if(!D.rec)D.rec={};
 if(!D.dex)D.dex=[];
+if(D.dexdone===undefined)D.dexdone=false;
 if(D.tickets===undefined)D.tickets=0;
 if(D.shields===undefined)D.shields=0;
 const save=()=>localStorage.setItem(KEY,JSON.stringify(D));
@@ -27,8 +28,6 @@ const save=()=>localStorage.setItem(KEY,JSON.stringify(D));
 let sel=TODAY, view=TODAY.slice(0,7), SCREEN=[];
 const R=d=>D.log[d]||{};
 function rec(d){if(!D.log[d])D.log[d]={};return D.log[d];}
-function weekKey(d){const x=parseD(d);x.setDate(x.getDate()-((x.getDay()+6)%7));return ymd(x);}
-function wk(d){const k=weekKey(d);if(!D.weeks[k])D.weeks[k]={bat:'',pit:''};return D.weeks[k];}
 
 /* ====== 소리 · 진동 ====== */
 let AC=null;
@@ -117,6 +116,12 @@ function pickDex(){
   for(let i=0;i<lock.length;i++){r-=1/lock[i].r;if(r<0)return lock[i];}
   return lock[0];
 }
+function checkDexDone(){
+  if(D.dexdone)return false;
+  if(D.dex.length<DEX.length)return false;
+  D.dexdone=true; D.coupons.push(BONUS); save();
+  return true;
+}
 
 /* ====== 타이머 ====== */
 let T={list:[],i:0,left:0,tot:0,run:false,int:null,manual:false,title:''};
@@ -142,7 +147,7 @@ function loadStep(){
   $('tName').textContent=e.n||'';
   $('tReps').textContent=e.r||'';
   $('tCue').innerHTML=(e.cue?'💡 '+e.cue:'')+(e.bad?'<br>⚠️ '+e.bad:'');
-  $('tNext').textContent=nx?('다음 ▸ '+nx.n):'마지막 동작이에요';
+  $('tNext').textContent=nx?('다음 ▸ '+nx.n):'마지막이에요';
   const s=secOf(e.t);
   if(s>0){
     T.manual=false;T.tot=s;T.left=s;T.run=true;
@@ -172,7 +177,7 @@ function finishPlan(){
   closeTimer();fanfare();
   setTimeout(()=>alert('🎉 '+T.title+' 끝!\n\n아래 완료 버튼 눌러서 기록하자.'),250);
 }
-$('tExit').onclick=()=>{if(confirm('훈련을 중단할까요?'))closeTimer();};
+$('tExit').onclick=()=>{if(confirm('중단할까요?'))closeTimer();};
 $('tSkip').onclick=()=>{clearInterval(T.int);T.i++;loadStep();};
 $('tPause').onclick=()=>{
   if(T.manual){T.i++;loadStep();return;}
@@ -280,7 +285,11 @@ function spin(){
       let extra='';
       if(Math.random()<0.3){
         const nd=pickDex();
-        if(nd){D.dex.push(nd.id);extra='\n\n'+nd.em+' 새 선수 카드 「'+nd.nm+'」 획득!';}
+        if(nd){
+          D.dex.push(nd.id);
+          extra='\n\n'+nd.em+' 새 선수 카드 「'+nd.nm+'」 획득!';
+          if(checkDexDone())extra+='\n\n🏆🏆 도감 완성!!\n'+BONUS+' 쿠폰이 들어왔어요!';
+        }
       }
       save();fanfare();
       setTimeout(()=>{if(extra)alert('🎁 '+win+extra);draw();},1300);
@@ -318,10 +327,10 @@ function drawAsk(dow){
   box.style.display='';
   const r=R(sel);
   if(dow===6){
-    box.innerHTML='<div class="ttl">🗓️ 이 날 경기 있어?</div><div class="sub" style="margin-top:6px">경기가 있으면 팀훈련 루틴 대신 경기 전·후 루틴이 나옵니다.</div><button class="btn gray'+(r.g?' on':'')+'" id="gBtn">'+(r.g?'✔ 경기 있는 날':'경기 있는 날 ⚾')+'</button>';
+    box.innerHTML='<div class="ttl">🗓️ 이 날 경기 있어?</div><div class="sub" style="margin-top:6px">경기가 있으면 팀훈련 회복 대신 경기 전·후 루틴이 나옵니다.</div><button class="btn gray'+(r.g?' on':'')+'" id="gBtn">'+(r.g?'✔ 경기 있는 날':'경기 있는 날 ⚾')+'</button>';
     $('gBtn').onclick=()=>{rec(sel).g=!R(sel).g;save();draw();};
   }else{
-    box.innerHTML='<div class="ttl">🗓️ 이 날 레슨 있어?</div><div class="sub" style="margin-top:6px">레슨 있는 날은 2분 쿨다운만. 드릴은 레슨 없는 날로 넘어갑니다.</div><button class="btn gray'+(r.l?' on':'')+'" id="lBtn">'+(r.l?'✔ 레슨 있는 날 (쿨다운만)':'레슨 있는 날 🏟️')+'</button>';
+    box.innerHTML='<div class="ttl">🗓️ 이 날 레슨 있어?</div><div class="sub" style="margin-top:6px">레슨 있는 날은 쿨다운 6분만. 레슨 없는 날은 튜빙 훈련이 나옵니다.</div><button class="btn gray'+(r.l?' on':'')+'" id="lBtn">'+(r.l?'✔ 레슨 있는 날 (쿨다운만)':'레슨 있는 날 🏟️')+'</button>';
     $('lBtn').onclick=()=>{rec(sel).l=!R(sel).l;save();draw();};
   }
 }
@@ -329,38 +338,16 @@ function drawAsk(dow){
 /* ====== 저녁 / 주말 ====== */
 function drawNight(dow){
   const box=$('nightCard'), r=R(sel);
-  let ps=[],mark='',swapTo='';
-  if(dow===0)ps=[SUN];
-  else if(dow===6)ps=[r.g?GAME:SAT];
-  else if(r.l)ps=[COOL];
-  else{
-    const w=wk(sel);
-    const batLeft=(!w.bat||w.bat===sel), pitLeft=(!w.pit||w.pit===sel);
-    let pick=r.t||'';
-    if(pick==='bat'&&!batLeft)pick='';
-    if(pick==='pit'&&!pitLeft)pick='';
-    if(!pick)pick=batLeft?'bat':(pitLeft?'pit':'');
-    if(pick==='bat'){ps=[BAT,COREA];mark='bat';}
-    else if(pick==='pit'){ps=[PIT,COREB];mark='pit';}
-    if(pick&&batLeft&&pitLeft&&!r.n&&sel<=TODAY)swapTo=(pick==='bat')?'pit':'bat';
-  }
-  if(!ps.length){
-    box.innerHTML='<div class="rest">🎉 이번 주 드릴 다 했어요!<br><span class="sub">오늘 저녁은 쉬거나 가볍게 캐치볼만.</span></div>'
-      +btnHTML(r.n,'doN','undoN','오늘 훈련 완료! ✅');
-  }else{
-    let h=ps.map(plan).join('<div style="height:14px"></div>');
-    if(swapTo)h+='<button class="btn gray" id="swapBtn">🔄 오늘은 '+(swapTo==='bat'?'타격':'투수')+' 드릴로 바꾸기</button>';
-    h+=btnHTML(r.n,'doN','undoN','오늘 훈련 완료! ✅');
-    box.innerHTML=h;
-  }
-  const sw=$('swapBtn'); if(sw)sw.onclick=()=>{rec(sel).t=swapTo;save();draw();};
-  const a=$('doN'); if(a)a.onclick=()=>{rec(sel).n=true;if(mark)wk(sel)[mark]=sel;afterDone();};
-  const u=$('undoN'); if(u)u.onclick=()=>{
-    if(!confirm('완료를 취소할까요?'))return;
-    rec(sel).n=false;
-    const w=wk(sel); if(w.bat===sel)w.bat=''; if(w.pit===sel)w.pit='';
-    save();draw();
-  };
+  let ps;
+  if(dow===0) ps=[SUN];
+  else if(dow===6) ps=[SAT_AM, r.g?GAME:SAT_PM];
+  else if(r.l) ps=[COOL];
+  else ps=[TUBE_WARM,TUBE_TEN,CORE4];
+  let h=ps.map(plan).join('<div style="height:14px"></div>');
+  h+=btnHTML(r.n,'doN','undoN','오늘 훈련 완료! ✅');
+  box.innerHTML=h;
+  const a=$('doN'); if(a)a.onclick=()=>{rec(sel).n=true;afterDone();};
+  const u=$('undoN'); if(u)u.onclick=()=>{if(confirm('완료를 취소할까요?')){rec(sel).n=false;save();draw();}};
 }
 
 /* ====== 기록실 ====== */
@@ -403,7 +390,10 @@ function drawDex(){
     return '<div class="dx'+(got?' got':' lock')+'"><span class="em">'+(got?d.em:'❔')+'</span>'
       +'<span class="nm">'+(got?d.nm:'???')+'</span></div>';
   }).join('')+'</div>';
-  h+='<div class="cal-legend">뽑기를 돌리면 가끔 새 카드가 나와요<br>이종범 · 선동열은 아주 귀해요 🐯</div>';
+  if(D.dex.length>=DEX.length)
+    h+='<div class="cal-legend">🏆 도감 완성! 자유시간 1시간 쿠폰을 받았어요</div>';
+  else
+    h+='<div class="cal-legend">뽑기를 돌리면 가끔 새 카드가 나와요<br>16명 다 모으면 <b>자유시간 1시간</b> 🎉 · 이종범 · 선동열은 아주 귀해요 🐯</div>';
   box.innerHTML=h;
 }
 
